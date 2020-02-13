@@ -76,6 +76,14 @@ func main() {
 		log.Fatalln(errors.New("Your file needs to end with .[csv, json, xml]"))
 		break
 	}
+
+	if Debug {
+		log.Println(data)
+	}
+
+	fmt.Println("Game starting!")
+	score := askQuestions(data)
+	fmt.Printf("Your score is %d out of %d\n", score, len(data))
 }
 
 func readData(filePath string, ioReader bool) ([]byte, io.Reader) {
@@ -97,4 +105,24 @@ func readData(filePath string, ioReader bool) ([]byte, io.Reader) {
 	}
 
 	return data, nil
+}
+
+func askQuestions(questions []game) int{
+	var score int
+
+	for i := 0; i < len(questions); i++ {
+		var userInput string
+
+		fmt.Printf("Question %d: %v\n", i + 1, questions[i].Question)
+		fmt.Scanf("%v\n", &userInput)
+		if userInput == questions[i].Result {
+			score++
+		}
+		if Debug {
+			log.Printf("Question data: %v", questions[i])
+			log.Printf("User input: %v", userInput)
+		}
+	}
+
+	return score
 }
