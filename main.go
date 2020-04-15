@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 type game struct {
@@ -26,9 +27,10 @@ func main() {
 	var data []game
 
 	// Define flags
-	filePath := flag.String("path", "./problem.csv", "File path with file ending with [json, csv, xml]")
+	filePath := flag.String("path", "problems.csv", "File path with file ending with [json, csv, xml]")
 	questionSeparator := flag.String("separator", ",", "Question separator")
 	debug := flag.Bool("debug", false, "Need output ?")
+	timerDuration := flag.Int("duration", 1000, "Time duration in seconds")
 
 	// Setup flags for output
 	flag.Parse()
@@ -82,7 +84,7 @@ func main() {
 	}
 
 	fmt.Println("Game starting!")
-	score := askQuestions(data)
+	score := askQuestions(data, *timerDuration)
 	fmt.Printf("Your score is %d out of %d\n", score, len(data))
 }
 
@@ -107,20 +109,34 @@ func readData(filePath string, ioReader bool) ([]byte, io.Reader) {
 	return data, nil
 }
 
-func askQuestions(questions []game) int{
+func askQuestions(questions []game, duration int) int {
 	var score int
+	answerChan := make(chan string)
+
+	timer := time.NewTimer(time.Duration(duration) * time.Second)
 
 	for i := 0; i < len(questions); i++ {
-		var userInput string
-
-		fmt.Printf("Question %d: %v\n", i + 1, questions[i].Question)
-		fmt.Scanf("%v\n", &userInput)
-		if userInput == questions[i].Result {
-			score++
-		}
+		fmt.Printf("Question %d: %v\n", i+1, questions[i].Question)
 		if Debug {
-			log.Printf("Question data: %v", questions[i])
-			log.Printf("User input: %v", userInput)
+			log.Printf("question: %v, answer: %v", questions[i].Question, questions[i].Result)
+		}
+
+		// Make the user input timer depends (if the timer ends, the problem is not stuck in scanf)
+		go func() {
+			var userInput string
+
+			fmt.Scanf("%v\n", &userInput)
+			answerChan <- userInput
+		}()
+
+		// Check for user response OR timer's end (no other option allowed)
+		select {
+		case <-timer.C:
+			return score
+		case answer := <-answerChan:
+			if answer == questions[i].Result {
+				score++
+			}
 		}
 	}
 
